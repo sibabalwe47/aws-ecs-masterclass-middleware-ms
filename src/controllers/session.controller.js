@@ -4,9 +4,8 @@ import * as Logger from "../utils/logger.js";
 
 const storeSesion = async (req, res) => {
   try {
-    const sessionData = req.body;
 
-    const storeSession = await sessionsDBProvider.putItemHandler(sessionData);
+    const result = await sessionsDBProvider.putItemHandler(req.body);
 
     Logger.writeLog({
       url: req.url,
@@ -34,13 +33,13 @@ const removeSession = async (req, res) => {
   try {
     const { accessToken } = req.body;
 
-    const removeExistingSessions = await sessionProvider.getItemHandler(
+    const removeExistingSessions = await sessionsDBProvider.remoteItemHandler(
       accessToken
     );
 
     Logger.writeLog({
       url: req.url,
-      result: signoutAction,
+      result: "OK",
       session: removeExistingSessions,
     });
 
@@ -71,8 +70,53 @@ const healthCheck = async(req, res) => {
   });
 }
 
+const validateUserSession = async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+
+    // Gets session in dynamodb
+    const result = await sessionsDBProvider.getItemHandler(accessToken);
+
+    // Check validity
+    const currentTime = new Date();
+    const difference = currentTime - result.item.timestamp;
+    const sessionLength = 1000 * 60 * 60;
+
+    if (Math.abs(difference) > sessionLength) {
+      return res.status(401).json({
+        success: false,
+        type: "InvalidTokenException",
+        message: "The token has expired, please login again.",
+      });
+    }
+
+    Logger.writeLog({
+      url: req.url,
+      body: req.body,
+      result: result,
+    });
+
+    res.status(200).json({
+      userId: result.item.userId,
+      email: result.item.email,
+      valid: true
+    });
+  } catch (error) {
+    Logger.writeLog({
+      url: req.url,
+      body: req.body,
+      error: error,
+    });
+    res.status(error.statusCode).json({
+      type: error.type,
+      message: error.message,
+    });
+  }
+};
+
 export default {
   storeSesion,
   removeSession,
+  validateUserSession,
   healthCheck
 };
