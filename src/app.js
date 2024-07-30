@@ -19,7 +19,7 @@ const PORT = process.env.PORT || 5500
 // Routes
 import authRoutes from "./routes/v1/session.route.js";
 // Paths
-app.use(`/api/v1/session`, authRoutes);
+app.use(`/api/v1/sessions`, authRoutes);
 // app.use(`/api/v1/logs`, logRoutes);
 
 app.listen(PORT, async () => {
